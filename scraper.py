@@ -6,7 +6,7 @@ import time
 import math
 
 # Calculate total pages
-def calc_total_pages(driver):
+def calc_total_pages(driver: object) -> int:
     element = driver.find_element(
         By.XPATH, "//*[contains(text(), 'results')]"
     )
@@ -18,7 +18,7 @@ def calc_total_pages(driver):
     return total_pages
 
 
-def run_scraper(url):
+def run_scraper(url: str) -> list[dict]:
     # Set options
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
