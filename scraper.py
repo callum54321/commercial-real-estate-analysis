@@ -17,11 +17,11 @@ def calc_total_pages(driver: object) -> int:
 
     return total_pages
 
-
+# Scraping pipeline
 def run_scraper(url: str) -> list[dict]:
     # Set options
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
+    # options.add_argument("--headless")
     options.add_argument("--window-size=1920,1080")
 
     # Start webdriver
@@ -39,7 +39,8 @@ def run_scraper(url: str) -> list[dict]:
 
             results = []
 
-            for page in range(1, total_pages + 1):
+            # Pagination loop
+            for page in range(1, 2):
                 current_url = f"{base_url}?page={page}"
 
                 driver.get(current_url)
@@ -56,15 +57,17 @@ def run_scraper(url: str) -> list[dict]:
                     By.CSS_SELECTOR, "li[class*='OfficeCard-module']"
                 )
 
+                # card (listings) loop
                 for card in cards:
                     # Scroll into card (lazy load workaround)
                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", card)
                     time.sleep(0.4)
 
-                    # Address element
-                    address = card.find_element(
+                    # Address href
+                    address_element = card.find_element(
                         By.XPATH, ".//*[@data-name='listings-page-centre-name']"
-                    ).text
+                        )
+                    address_href = address_element.get_attribute("href")
 
                     # Price element
                     price = card.find_element(
@@ -80,14 +83,23 @@ def run_scraper(url: str) -> list[dict]:
                         tags.append(li.text)
 
                     results.append({
-                        "address": address,
+                        "address_href": address_href,
                         "price": price,
                         "tags": tags,
                     })
-                    
-                print(f"Found {len(results) / page} results on page {page}")
+                print(f"Found {len(cards)} results on page {page}")
 
-            print(f"Results: {results}")
+            # href loop (address gathering)
+            for index, result in enumerate(results):
+                driver.get(result["address_href"])
+                time.sleep(2)
+
+                print(f"Navigating to link {index}/{len(results)}...")
+
+                address = driver.find_element(
+                    By.CSS_SELECTOR, "h1[class*='text-base-content']"
+                ).text
+                result["address_text"] = address
 
             return results
 

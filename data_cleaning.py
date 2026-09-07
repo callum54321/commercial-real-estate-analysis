@@ -23,21 +23,22 @@ if __name__ == "__main__":
     # Initialize dataframe
     df = pd.DataFrame(raw_data)
 
-    # Remove trailing/leading whitespaces from address
-    df["address"] = df["address"].str.strip()
+    # Remove leading text from address string
+    df["address_text"] = df["address_text"].str.replace("Office Space in ", "")
 
     # Format price data
     df["price"] = df["price"].apply(parse_price)
 
     # Create dummy tags
-    tags_exploded = df["tags"].explode().str.strip().str.lower()
+    tags_exploded = df["tags"].explode().str.lower()
     tags_dummies = pd.get_dummies(tags_exploded).groupby(level=0).max()
     df = df.join(tags_dummies)
 
     # Drop missing values
-    df.dropna(subset=["address", "price"], inplace=True)
+    df.dropna(subset=["address_text", "price"], inplace=True)
 
-    # Reset index
+    # Reset df index
     df.reset_index(drop=True, inplace=True)
 
     print(df)
+    df.to_csv('data.csv', index=False)
