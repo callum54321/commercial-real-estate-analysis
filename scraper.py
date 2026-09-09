@@ -4,107 +4,81 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import math
+import pandas as pd
 
-# Calculate total pages
-def calc_total_pages(driver: object) -> int:
-    element = driver.find_element(
-        By.XPATH, "//*[contains(text(), 'results')]"
+url = "https://hongkongoffices.com/en/commercial-property/for-rent?order=prd"
+
+# Set options
+options = webdriver.ChromeOptions()
+# options.add_argument("--headless")
+options.add_argument("--window-size=1920,1080")
+
+driver = webdriver.Chrome(options=options)
+driver.get(url)
+time.sleep(3)
+
+listings = []
+
+while True:
+    print("Starting data scrape...")
+
+    # Results container
+    container = driver.find_element(
+        By.CSS_SELECTOR, "div[class*='search-result-container']"
     )
-    element_text = element.text
-    results_count = element_text.split()[0]
-    results_int = int(results_count)
-    total_pages = math.ceil(results_int / 20)
 
-    return total_pages
+    # Property cards
+    cards = container.find_elements(
+        By.CSS_SELECTOR, "div[class*='property-item']"
+    )
 
-# Scraping pipeline
-def run_scraper(url: str) -> list[dict]:
-    # Set options
-    options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")
-    options.add_argument("--window-size=1920,1080")
+    # Data wrangling loop
+    for index, card in enumerate(cards):
+        print(f"Gather data from listing {index + 1}/{len(cards)}")
 
-    # Start webdriver
-    driver = webdriver.Chrome(options=options)
+        # Scroll for lazy load
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", card)
+        time.sleep(0.4)
 
-    # Base URL
-    base_url = url
+        # Building name element
+        building_name = card.find_element(By.CSS_SELECTOR, "h3[class*='card-title']").text
 
-    # Try...Except scraping block
+        # District element
+        p_tag = card.find_element(By.CSS_SELECTOR, "p[class*='card-text']")
+        district = p_tag.find_element(By.CSS_SELECTOR, "span[class*='district']").text
+
+        # Square feet element
+        sq_ft = card.find_element(By.XPATH, ".//*[contains(., 'Size:')]").text
+
+        # Price element
+        price = card.find_element(By.CSS_SELECTOR, "span[class*='price-in-hkd']").text
+
+        listings.append({
+            "bldg_name" : building_name,
+            "district": district,
+            "sq_ft": sq_ft,
+            "price": price,
+        })
+
     try:
-            driver.get(base_url)
-            print("Starting data scrape...")
+        print("Attempting to click next button...")
+        pagination = driver.find_element(By.CSS_SELECTOR, "ul[class*='pagination']")
 
-            total_pages = calc_total_pages(driver)
+        next_button = WebDriverWait(pagination, 5).until(
+            EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), '›')]"))
+        )
 
-            results = []
+        if "disabled" in next_button.get_attribute("class"):
+            print("Next button disabled, reached the last page...")
+            driver.quit()
+            break
 
-            # Pagination loop
-            for page in range(1, 2):
-                current_url = f"{base_url}?page={page}"
+        next_button.click()
+        print("Navigating to next page...")
 
-                driver.get(current_url)
-                time.sleep(3)
+    except Exception:
+        print("Next button unavailable")
+        break
 
-                # Wait for cards to appear
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_all_elements_located(
-                        (By.CSS_SELECTOR, "li[class*='OfficeCard-module']")
-                    )
-                )
-
-                cards = driver.find_elements(
-                    By.CSS_SELECTOR, "li[class*='OfficeCard-module']"
-                )
-
-                # card (listings) loop
-                for card in cards:
-                    # Scroll into card (lazy load workaround)
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", card)
-                    time.sleep(0.4)
-
-                    # Address href
-                    address_element = card.find_element(
-                        By.XPATH, ".//*[@data-name='listings-page-centre-name']"
-                        )
-                    address_href = address_element.get_attribute("href")
-
-                    # Price element
-                    price = card.find_element(
-                        By.XPATH, ".//*[@data-name='listings-page-centre-price']"
-                    ).text
-
-                    # Tags elements
-                    tags = []
-                    li_elements = card.find_elements(
-                        By.CSS_SELECTOR, "ul[class*='amenitiesItem'] li, li[class*='amenitiesItem']"
-                    )
-                    for li in li_elements:
-                        tags.append(li.text)
-
-                    results.append({
-                        "address_href": address_href,
-                        "price": price,
-                        "tags": tags,
-                    })
-                print(f"Found {len(cards)} results on page {page}")
-
-            # href loop (address gathering)
-            for index, result in enumerate(results):
-                driver.get(result["address_href"])
-                time.sleep(2)
-
-                print(f"Navigating to link {index}/{len(results)}...")
-
-                address = driver.find_element(
-                    By.CSS_SELECTOR, "h1[class*='text-base-content']"
-                ).text
-                result["address_text"] = address
-
-            return results
-
-    except Exception as e:
-        print(f"Error while attempting to connect: {e}")
-
-    finally:
-        driver.quit()
+df = pd.DataFrame(listings)
+df.to_csv("listings.csv", index=False)
