@@ -35,8 +35,7 @@ for index, station in enumerate(df["English Name"]):
 
         mtr_stations.append({
             "Name": station,
-            "Longitude": lon,
-            "Latitude": lat,
+            "coords": (lat, lon)
         })
     else:
         print(f"Invalid address for station {index}...")
