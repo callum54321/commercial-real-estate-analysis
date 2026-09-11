@@ -5,8 +5,9 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import math
 import pandas as pd
+from dotenv import load_dotenv()
 
-url = "https://hongkongoffices.com/en/commercial-property/for-rent?order=prd"
+url = os.getenv("URL")
 
 # Set options
 options = webdriver.ChromeOptions()
@@ -47,8 +48,8 @@ while True:
         p_tag = card.find_element(By.CSS_SELECTOR, "p[class*='card-text']")
         district = p_tag.find_element(By.CSS_SELECTOR, "span[class*='district']").text
 
-        # Square feet element
-        sq_ft = card.find_element(By.XPATH, ".//*[contains(., 'Size:')]").text
+        # All info element (sq ft, price, etc)
+        all_info = card.find_element(By.XPATH, ".//*[contains(., 'Size:')]").text
 
         # Price element
         price = card.find_element(By.CSS_SELECTOR, "span[class*='price-in-hkd']").text
@@ -56,7 +57,7 @@ while True:
         listings.append({
             "bldg_name" : building_name,
             "district": district,
-            "sq_ft": sq_ft,
+            "all_info": all_info,
             "price": price,
         })
 
@@ -74,6 +75,7 @@ while True:
             break
 
         next_button.click()
+        time.sleep(1)
         print("Navigating to next page...")
 
     except Exception:
