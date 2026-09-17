@@ -20,5 +20,5 @@ df["price_total"] = df["price"].astype(int)
 df["price_sq_ft"] = df["price_total"] / df["sq_ft"]
 df["price_sq_ft"] = df["price_sq_ft"].astype(int)
 
-# Drop all_info column
-df = df.drop(columns=["all_info"])
+# Drop all_info, price columns
+df = df.drop(columns=["all_info", "price"])
