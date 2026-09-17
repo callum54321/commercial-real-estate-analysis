@@ -2,7 +2,7 @@ import pandas as pd
 import re
 
 # CSV to dataframe
-df = pd.read_csv("listings.csv")
+df = pd.read_csv("../data/scraped_listings.csv")
 
 # Drop missing values
 df.dropna(inplace=True)
